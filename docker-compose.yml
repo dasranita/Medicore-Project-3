@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-medicore}
+      POSTGRES_USER: ${POSTGRES_USER:-medicore}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-this-local-password}
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-medicore} -d ${POSTGRES_DB:-medicore}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [internal]
+  api:
+    build: ./backend
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-medicore}:${POSTGRES_PASSWORD:-change-this-local-password}@db:5432/${POSTGRES_DB:-medicore}?schema=public
+      PORT: 4000
+    ports: ["4000:4000"]
+    depends_on:
+      db: { condition: service_healthy }
+    networks: [internal]
+  analytics:
+    build: ./analytics
+    ports: ["8000:8000"]
+    networks: [internal]
+  web:
+    build: ./frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api
+    ports: ["3000:3000"]
+    depends_on: [api]
+    networks: [internal]
+volumes:
+  pgdata:
+networks:
+  internal:

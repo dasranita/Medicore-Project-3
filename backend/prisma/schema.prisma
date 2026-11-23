@@ -1,0 +1,113 @@
+generator client { provider = "prisma-client-js" }
+datasource db { provider = "postgresql" url = env("DATABASE_URL") }
+enum Role { PATIENT RECEPTIONIST DOCTOR NURSE LAB_TECHNICIAN BILLING_OFFICER ADMIN }
+enum AppointmentStatus { BOOKED CONFIRMED CANCELLED COMPLETED NO_SHOW }
+enum EncounterStatus { OPEN COMPLETED }
+enum LabStatus { ORDERED COLLECTED PROCESSING COMPLETED CANCELLED }
+model User {
+  id String @id @default(cuid())
+  name String
+  email String @unique
+  passwordHash String
+  role Role
+  patient Patient?
+  doctor Doctor?
+  createdAt DateTime @default(now())
+  auditEvents AuditLog[]
+}
+model Patient {
+  id String @id @default(cuid())
+  userId String? @unique
+  user User? @relation(fields: [userId], references: [id])
+  fullName String
+  dateOfBirth DateTime?
+  phone String?
+  email String?
+  bloodGroup String?
+  appointments Appointment[]
+  encounters Encounter[]
+  labOrders LabOrder[]
+  invoices Invoice[]
+  consents Consent[]
+  createdAt DateTime @default(now())
+  @@index([fullName])
+}
+model Department {
+  id String @id @default(cuid())
+  name String @unique
+  doctors Doctor[]
+}
+model Doctor {
+  id String @id @default(cuid())
+  userId String @unique
+  user User @relation(fields: [userId], references: [id])
+  specialization String
+  departmentId String?
+  department Department? @relation(fields: [departmentId], references: [id])
+  appointments Appointment[]
+  encounters Encounter[]
+}
+model Appointment {
+  id String @id @default(cuid())
+  patientId String
+  patient Patient @relation(fields: [patientId], references: [id])
+  doctorId String
+  doctor Doctor @relation(fields: [doctorId], references: [id])
+  startsAt DateTime
+  endsAt DateTime
+  status AppointmentStatus @default(BOOKED)
+  reason String?
+  createdAt DateTime @default(now())
+  @@index([doctorId, startsAt, endsAt])
+  @@index([patientId, startsAt])
+}
+model Encounter {
+  id String @id @default(cuid())
+  patientId String
+  patient Patient @relation(fields: [patientId], references: [id])
+  doctorId String
+  doctor Doctor @relation(fields: [doctorId], references: [id])
+  notes String
+  diagnosisCode String?
+  status EncounterStatus @default(OPEN)
+  createdAt DateTime @default(now())
+}
+model LabOrder {
+  id String @id @default(cuid())
+  patientId String
+  patient Patient @relation(fields: [patientId], references: [id])
+  testName String
+  status LabStatus @default(ORDERED)
+  result String?
+  orderedAt DateTime @default(now())
+  completedAt DateTime?
+}
+model Invoice {
+  id String @id @default(cuid())
+  patientId String
+  patient Patient @relation(fields: [patientId], references: [id])
+  amount Decimal @db.Decimal(10,2)
+  description String
+  paid Boolean @default(false)
+  createdAt DateTime @default(now())
+}
+model Consent {
+  id String @id @default(cuid())
+  patientId String
+  patient Patient @relation(fields: [patientId], references: [id])
+  purpose String
+  granted Boolean
+  recordedAt DateTime @default(now())
+}
+model AuditLog {
+  id String @id @default(cuid())
+  actorId String?
+  actor User? @relation(fields: [actorId], references: [id])
+  action String
+  resource String
+  resourceId String?
+  requestId String?
+  createdAt DateTime @default(now())
+  @@index([createdAt])
+  @@index([resource, resourceId])
+}

@@ -1,0 +1,1 @@
+const app=require('./app');const port=process.env.PORT||4000;const server=app.listen(port,()=>console.log(`MediCore API listening on ${port}`));process.on('SIGTERM',()=>server.close(()=>process.exit(0)));
